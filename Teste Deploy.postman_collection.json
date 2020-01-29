@@ -1,0 +1,957 @@
+{
+	"info": {
+		"_postman_id": "cf4c687f-0d4e-4d69-9b12-e9fa66615401",
+		"name": "Teste Deploy",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "SENSIDIA - Autenticação Sandbox Rol",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "72181df1-0ec8-4d93-80b7-288bb089370b",
+						"exec": [
+							"pm.test(\"Autenticação SD-ROL: OK\", function () {",
+							"    var jsonData = JSON.parse(responseBody);",
+							"    postman.setEnvironmentVariable(\"Access_token-SD-ROL\", jsonData.access_token);",
+							"    pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Autenticacao-SD-ROL}}"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SD-ROL}}/oauth/access-token",
+					"host": [
+						"{{EnderecoAPI-SD-ROL}}"
+					],
+					"path": [
+						"oauth",
+						"access-token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SENSIDIA - Autenticação SandboxTeste Rol",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "b12c133b-c31e-4bc0-8ee0-ae355dd3c915",
+						"exec": [
+							"pm.test(\"Autenticação SDT-ROL : OK\", function () {",
+							"    var jsonData = JSON.parse(responseBody);",
+							"    postman.setEnvironmentVariable(\"Access_token-SDT-ROL\", jsonData.access_token);",
+							"    pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Autenticacao-SDT-ROL}}"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SDT-ROL}}/oauth/access-token",
+					"host": [
+						"{{EnderecoAPI-SDT-ROL}}"
+					],
+					"path": [
+						"oauth",
+						"access-token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SENSIDIA - Autenticação Sandbox Motor",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c991e5cb-4840-4620-8095-0f9b50b2a024",
+						"exec": [
+							"pm.test(\"Autenticação SD-MT: OK\", function () {",
+							"    var jsonData = JSON.parse(responseBody);",
+							"    postman.setEnvironmentVariable(\"Access_token-SD-MT\", jsonData.access_token);",
+							"    pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Autenticacao-SD-MT}}"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SD-MT}}/oauth/access-token",
+					"host": [
+						"{{EnderecoAPI-SD-MT}}"
+					],
+					"path": [
+						"oauth",
+						"access-token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SENSIDIA - Autenticação SandboxTeste Motor",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "9f67d7fe-641f-4558-b48a-44c6316e2744",
+						"exec": [
+							"pm.test(\"Autenticação SDT-MT: OK\", function () {",
+							"    var jsonData = JSON.parse(responseBody);",
+							"    postman.setEnvironmentVariable(\"Access_token-SDT-MT\", jsonData.access_token);",
+							"    pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{Autenticacao-SDT-MT}}"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SDT-MT}}/oauth/access-token",
+					"host": [
+						"{{EnderecoAPI-SDT-MT}}"
+					],
+					"path": [
+						"oauth",
+						"access-token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - ConsultarDadosDoBoleto - SD-ROL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "4c8f6321-2e12-44db-b88a-4fecc46b1174",
+						"exec": [
+							"pm.test(\"Gravar ResponseBody\", function () {",
+							"        pm.globals.set(\"BodyConsutaDadosDoBoleto-SD-ROL\", \"T\");",
+							"        pm.globals.set(\"BodyConsutaDadosDoBoleto-SD-ROL\", JSON.stringify(responseBody));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "5f3ac4a0-fc66-4b4a-87eb-2dac729ce2ab",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{Client_id-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token-SD-ROL}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoBarras\": \"{{CODIGO_BARRAS}}\",\r\n  \"linhaDigitavel\": \"\",\r\n  \"numeroDocumento\": \"\",\r\n  \"dataVencimento\": \"{{DATA_LIMITE_PAGAMENTO}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SD-ROL}}/pagamentosIB//api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-ROL}}/Transacoes/ConsultarDadosDoBoleto",
+					"host": [
+						"{{EnderecoAPI-SD-ROL}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-ROL}}",
+						"Transacoes",
+						"ConsultarDadosDoBoleto"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - ConsultarDadosDoBoleto - SDT-ROL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "87251119-2c29-4a4e-9b7e-0678d97077c7",
+						"exec": [
+							"    pm.test(\"Comparação de dados\", function () {\r",
+							"        //Grava na variável global BodyConsutaDadosDoBoleto-SDT-ROL\r",
+							"        pm.globals.set(\"BodyConsutaDadosDoBoleto-SDT-ROL\", JSON.stringify(responseBody));\r",
+							"        //Pega valor da variavel global BodyConsutaDadosDoBoleto-SDT-ROL\r",
+							"        var globalVarSDTROL = pm.globals.get(\"BodyConsutaDadosDoBoleto-SDT-ROL\");\r",
+							"        //Pega valor da variavel global BodyConsutaDadosDoBoleto-SD-ROL\r",
+							"        var globalVarSDROL = pm.globals.get(\"BodyConsutaDadosDoBoleto-SD-ROL\");\r",
+							"        //Faz a comparação\r",
+							"        pm.expect(globalVarSDTROL.value).to.eql(globalVarSDROL.value)\r",
+							"});\r",
+							"    "
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "fb1ec528-67a7-4bb6-9e86-92e9906af710",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{Client_id-SDT-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso-SDT-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token-SDT-ROL}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoBarras\": \"{{CODIGO_BARRAS}}\",\r\n  \"linhaDigitavel\": \"\",\r\n  \"numeroDocumento\": \"\",\r\n  \"dataVencimento\": \"{{DATA_LIMITE_PAGAMENTO}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SDT-ROL}}/pagamentosIB//api/v1/ContasCorrentes/{{Agencia-SDT-ROL}}/{{ContaCorrente-SDT-ROL}}/Transacoes/ConsultarDadosDoBoleto",
+					"host": [
+						"{{EnderecoAPI-SDT-ROL}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SDT-ROL}}",
+						"{{ContaCorrente-SDT-ROL}}",
+						"Transacoes",
+						"ConsultarDadosDoBoleto"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - ConsultarDadosDoBoleto - SD-MT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "707113b0-d1cd-46c9-8b42-ea1cf82199f4",
+						"exec": [
+							"pm.globals.set(\"BodyConsutaDadosDoBoleto-SD-MT\",\"\");",
+							"var globalVar = JSON.stringify(responseBody);",
+							"    globalVar.replace(/\\s{2,}/g, ' ');",
+							"    globalVar.trim();",
+							"     ",
+							"    var firstPart = globalVar.substring(0, globalVar.indexOf(\"dataHoraConsultaBoleto\"));",
+							"    var secondPart = globalVar.substring(globalVar.indexOf(\"erroMessage\"), globalVar.length);",
+							"",
+							"pm.test(\"Grava na variável global\", function () {",
+							"    pm.globals.set(\"BodyConsutaDadosDoBoleto-SD-MT\", firstPart + secondPart);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{Client_id-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token-SD-ROL}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoBarras\": \"{{CODIGO_BARRAS}}\",\r\n  \"linhaDigitavel\": \"\",\r\n  \"numeroDocumento\": \"\",\r\n  \"dataVencimento\": \"{{DATA_LIMITE_PAGAMENTO}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SD-ROL}}/pagamentosIB//api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-ROL}}/Transacoes/ConsultarDadosDoBoleto",
+					"host": [
+						"{{EnderecoAPI-SD-ROL}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-ROL}}",
+						"Transacoes",
+						"ConsultarDadosDoBoleto"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - ConsultarDadosDoBoleto - SDT-MT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "8a8fe1db-529f-4dec-8a09-1e39903f2140",
+						"exec": [
+							"    //limpa variável global\r",
+							"    pm.globals.set(\"BodyConsutaDadosDoBoleto-SDT-MT\",\"\");\r",
+							"     \r",
+							"    var globalVar = JSON.stringify(responseBody);\r",
+							"    globalVar.replace(/\\s{2,}/g, ' ');\r",
+							"    globalVar.trim();\r",
+							"   \r",
+							"    var firstPart = globalVar.substring(0, globalVar.indexOf(\"dataHoraConsultaBoleto\"));\r",
+							"    var secondPart = globalVar.substring(globalVar.indexOf(\"erroMessage\"), globalVar.length);\r",
+							"    \r",
+							"    pm.test(\"Grava na variável global\", function () {\r",
+							"        pm.globals.set(\"BodyConsutaDadosDoBoleto-SDT-MT\", firstPart + secondPart);\r",
+							"    });\r",
+							"    \r",
+							"    //Pega valor da variavel global BodyConsutaDadosDoBoleto-SDT-MT\r",
+							"    var globalVarSDTMT = pm.globals.get(\"BodyConsutaDadosDoBoleto-SDT-MT\");\r",
+							"    //Pega valor da variavel global BodyConsutaDadosDoBoleto-SD-MT\r",
+							"    var globalVarSDMT = pm.globals.get(\"BodyConsutaDadosDoBoleto-SD-MT\");\r",
+							"    \r",
+							"    pm.test(\"Comparação deve ser iguais\", function () {\r",
+							"        //Faz a comparação\r",
+							"        pm.expect(globalVarSDTMT).to.eql(globalVarSDMT)\r",
+							"        pm.response.to.have.status(200);\r",
+							"    });\r",
+							"   "
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{Client_id-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso-SD-ROL}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token-SD-ROL}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoBarras\": \"{{CODIGO_BARRAS}}\",\r\n  \"linhaDigitavel\": \"\",\r\n  \"numeroDocumento\": \"\",\r\n  \"dataVencimento\": \"{{DATA_LIMITE_PAGAMENTO}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-SD-ROL}}/pagamentosIB//api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-ROL}}/Transacoes/ConsultarDadosDoBoleto",
+					"host": [
+						"{{EnderecoAPI-SD-ROL}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-ROL}}",
+						"Transacoes",
+						"ConsultarDadosDoBoleto"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Tributos - SD-ROL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c7c44fb0-822e-4f03-9ab8-45ba439e1b8c",
+						"exec": [
+							"pm.test(\"Pagar Tributos\", function () {",
+							"        pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "978b5bc2-3b23-4107-90e1-1eb33671dc61",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "client_id",
+						"type": "text",
+						"value": "{{Client_id-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "ChaveAcesso",
+						"type": "text",
+						"value": "{{ChaveAcesso-SD-Tributos}}"
+					},
+					{
+						"key": "access_token",
+						"type": "text",
+						"value": "{{Access_token-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{Authorization-SD}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"{{codigoDeBarrasOuLinhaDigitavel}}\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"{{identificacaoDaOperacaoNoExtrato}}\",\r\n  \"valorDoPagamento\": \"{{valorDoPagamento}}\",\r\n  \"fgts\": {\r\n    \"inscricaoTipo\": \"string\",\r\n    \"idRecolhimento\": \"0\",\r\n    \"digitoIdRecolhimento\": \"0\",\r\n    \"codRecolhimento\": \"0\"\r\n  },\r\n  \"darf\": {\r\n    \"nome\": \"{{nome}}\",\r\n  \"telefone\": \"11925469159\",\r\n  \"cpfSacado\": \"{{cpfSacado}}\"\r\n  },\r\n  \"codigoReceita\": 0,\r\n  \"codigoReceitaDescricao\": \"string\",\r\n  \"periodoApuracao\": \"2020-01-06\",\r\n  \"valorPrincipal\": \"{{valorPrincipal}}\",\r\n  \"valorMulta\": 0,\r\n  \"dataVencimento\": \"{{dataVencimento}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-LocalHost}}/api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-Tributos}}/Transacoes/IncluirTributo",
+					"host": [
+						"{{EnderecoAPI-LocalHost}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-Tributos}}",
+						"Transacoes",
+						"IncluirTributo"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Tributos - SDT-ROL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c7c44fb0-822e-4f03-9ab8-45ba439e1b8c",
+						"exec": [
+							"pm.test(\"Pagar Tributos\", function () {",
+							"        pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "978b5bc2-3b23-4107-90e1-1eb33671dc61",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "client_id",
+						"type": "text",
+						"value": "{{Client_id-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "ChaveAcesso",
+						"type": "text",
+						"value": "{{ChaveAcesso-SD-Tributos}}"
+					},
+					{
+						"key": "access_token",
+						"type": "text",
+						"value": "{{Access_token-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{Authorization-SD}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"{{codigoDeBarrasOuLinhaDigitavel}}\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"{{identificacaoDaOperacaoNoExtrato}}\",\r\n  \"valorDoPagamento\": \"{{valorDoPagamento}}\",\r\n  \"fgts\": {\r\n    \"inscricaoTipo\": \"string\",\r\n    \"idRecolhimento\": \"0\",\r\n    \"digitoIdRecolhimento\": \"0\",\r\n    \"codRecolhimento\": \"0\"\r\n  },\r\n  \"darf\": {\r\n    \"nome\": \"{{nome}}\",\r\n  \"telefone\": \"11925469159\",\r\n  \"cpfSacado\": \"{{cpfSacado}}\"\r\n  },\r\n  \"codigoReceita\": 0,\r\n  \"codigoReceitaDescricao\": \"string\",\r\n  \"periodoApuracao\": \"2020-01-06\",\r\n  \"valorPrincipal\": \"{{valorPrincipal}}\",\r\n  \"valorMulta\": 0,\r\n  \"dataVencimento\": \"{{dataVencimento}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-LocalHost}}/api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-Tributos}}/Transacoes/IncluirTributo",
+					"host": [
+						"{{EnderecoAPI-LocalHost}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-Tributos}}",
+						"Transacoes",
+						"IncluirTributo"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Tributos - SD-MT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c7c44fb0-822e-4f03-9ab8-45ba439e1b8c",
+						"exec": [
+							"pm.test(\"Pagar Tributos\", function () {",
+							"        pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "978b5bc2-3b23-4107-90e1-1eb33671dc61",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "client_id",
+						"type": "text",
+						"value": "{{Client_id-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "ChaveAcesso",
+						"type": "text",
+						"value": "{{ChaveAcesso-SD-Tributos}}"
+					},
+					{
+						"key": "access_token",
+						"type": "text",
+						"value": "{{Access_token-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{Authorization-SD}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"{{codigoDeBarrasOuLinhaDigitavel}}\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"{{identificacaoDaOperacaoNoExtrato}}\",\r\n  \"valorDoPagamento\": \"{{valorDoPagamento}}\",\r\n  \"fgts\": {\r\n    \"inscricaoTipo\": \"string\",\r\n    \"idRecolhimento\": \"0\",\r\n    \"digitoIdRecolhimento\": \"0\",\r\n    \"codRecolhimento\": \"0\"\r\n  },\r\n  \"darf\": {\r\n    \"nome\": \"{{nome}}\",\r\n  \"telefone\": \"11925469159\",\r\n  \"cpfSacado\": \"{{cpfSacado}}\"\r\n  },\r\n  \"codigoReceita\": 0,\r\n  \"codigoReceitaDescricao\": \"string\",\r\n  \"periodoApuracao\": \"2020-01-06\",\r\n  \"valorPrincipal\": \"{{valorPrincipal}}\",\r\n  \"valorMulta\": 0,\r\n  \"dataVencimento\": \"{{dataVencimento}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-LocalHost}}/api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-Tributos}}/Transacoes/IncluirTributo",
+					"host": [
+						"{{EnderecoAPI-LocalHost}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-Tributos}}",
+						"Transacoes",
+						"IncluirTributo"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Tributos - SDT-MT",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c7c44fb0-822e-4f03-9ab8-45ba439e1b8c",
+						"exec": [
+							"pm.test(\"Pagar Tributos\", function () {",
+							"        pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "978b5bc2-3b23-4107-90e1-1eb33671dc61",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "client_id",
+						"type": "text",
+						"value": "{{Client_id-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "ChaveAcesso",
+						"type": "text",
+						"value": "{{ChaveAcesso-SD-Tributos}}"
+					},
+					{
+						"key": "access_token",
+						"type": "text",
+						"value": "{{Access_token-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{Authorization-SD}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"{{codigoDeBarrasOuLinhaDigitavel}}\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"{{identificacaoDaOperacaoNoExtrato}}\",\r\n  \"valorDoPagamento\": \"{{valorDoPagamento}}\",\r\n  \"fgts\": {\r\n    \"inscricaoTipo\": \"string\",\r\n    \"idRecolhimento\": \"0\",\r\n    \"digitoIdRecolhimento\": \"0\",\r\n    \"codRecolhimento\": \"0\"\r\n  },\r\n  \"darf\": {\r\n    \"nome\": \"{{nome}}\",\r\n  \"telefone\": \"11925469159\",\r\n  \"cpfSacado\": \"{{cpfSacado}}\"\r\n  },\r\n  \"codigoReceita\": 0,\r\n  \"codigoReceitaDescricao\": \"string\",\r\n  \"periodoApuracao\": \"2020-01-06\",\r\n  \"valorPrincipal\": \"{{valorPrincipal}}\",\r\n  \"valorMulta\": 0,\r\n  \"dataVencimento\": \"{{dataVencimento}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-LocalHost}}/api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-Tributos}}/Transacoes/IncluirTributo",
+					"host": [
+						"{{EnderecoAPI-LocalHost}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-Tributos}}",
+						"Transacoes",
+						"IncluirTributo"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Boletos - SD-ROL",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{client_id}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"75696783900000215351444601011308527828444001\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"Coloca no extrato\",\r\n  \"valorDoPagamento\": 1.50,\r\n  \"valorDoTitulo\": 1.50\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI}}/pagamentosIB/api/v1/ContasCorrentes/{{Agencia}}/{{ContaCorrente}}/Transacoes/IncluirTitulo",
+					"host": [
+						"{{EnderecoAPI}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia}}",
+						"{{ContaCorrente}}",
+						"Transacoes",
+						"IncluirTitulo"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OpenBank - Pagar Contas de Consumo - SD-ROL",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "client_id",
+						"value": "{{client_id}}",
+						"type": "text"
+					},
+					{
+						"key": "access_token",
+						"value": "{{Access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "ChaveAcesso",
+						"value": "{{ChaveAcesso}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"84600000001368202962019031004000000235629183\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"Coloca no extrato\",\r\n  \"valorDoPagamento\": 1.50\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI}}/pagamentosIB/api/v1/ContasCorrentes/{{Agencia}}/{{ContaCorrente}}/Transacoes/IncluirContaConsumo",
+					"host": [
+						"{{EnderecoAPI}}"
+					],
+					"path": [
+						"pagamentosIB",
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia}}",
+						"{{ContaCorrente}}",
+						"Transacoes",
+						"IncluirContaConsumo"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}

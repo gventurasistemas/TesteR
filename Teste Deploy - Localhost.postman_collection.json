@@ -1,0 +1,89 @@
+{
+	"info": {
+		"_postman_id": "0ccdfce4-fc1a-490b-89c8-430ba70dfacb",
+		"name": "Teste Deploy - Localhost",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "OpenBank - Pagar Tributos - SD-ROL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c7c44fb0-822e-4f03-9ab8-45ba439e1b8c",
+						"exec": [
+							"pm.test(\"Pagar Tributos\", function () {",
+							"        pm.response.to.have.status(201);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "978b5bc2-3b23-4107-90e1-1eb33671dc61",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "client_id",
+						"type": "text",
+						"value": "{{Client_id-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "ChaveAcesso",
+						"type": "text",
+						"value": "{{ChaveAcesso-SD-Tributos}}"
+					},
+					{
+						"key": "access_token",
+						"type": "text",
+						"value": "{{Access_token-SD-ROL}}",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{Authorization-SD}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"codigoDeBarrasOuLinhaDigitavel\": \"{{codigoDeBarrasOuLinhaDigitavel}}\",\r\n  \"identificacaoDaOperacaoNoExtrato\": \"{{identificacaoDaOperacaoNoExtrato}}\",\r\n  \"valorDoPagamento\": \"{{valorDoPagamento}}\",\r\n  \"fgts\": {\r\n    \"inscricaoTipo\": \"string\",\r\n    \"idRecolhimento\": \"0\",\r\n    \"digitoIdRecolhimento\": \"0\",\r\n    \"codRecolhimento\": \"0\"\r\n  },\r\n  \"darf\": {\r\n    \"nome\": \"{{nome}}\",\r\n  \"telefone\": \"11925469159\",\r\n  \"cpfSacado\": \"{{cpfSacado}}\"\r\n  },\r\n  \"codigoReceita\": 0,\r\n  \"codigoReceitaDescricao\": \"string\",\r\n  \"periodoApuracao\": \"2020-01-06\",\r\n  \"valorPrincipal\": \"{{valorPrincipal}}\",\r\n  \"valorMulta\": 0,\r\n  \"dataVencimento\": \"{{dataVencimento}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{EnderecoAPI-LocalHost}}/api/v1/ContasCorrentes/{{Agencia-SD-ROL}}/{{ContaCorrente-SD-Tributos}}/Transacoes/IncluirTributo",
+					"host": [
+						"{{EnderecoAPI-LocalHost}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"ContasCorrentes",
+						"{{Agencia-SD-ROL}}",
+						"{{ContaCorrente-SD-Tributos}}",
+						"Transacoes",
+						"IncluirTributo"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}

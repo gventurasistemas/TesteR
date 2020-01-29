@@ -1,0 +1,1540 @@
+using Common.Logging;
+using Dapper;
+using Newtonsoft.Json;
+using Rendimento.InternetBanking.Cliente.Application.ViewModels.SaldoExtrato;
+using Rendimento.InternetBanking.Cliente.Core.Infra.CrossCutting.Extensions;
+using Rendimento.InternetBanking.Cliente.Core.Infra.CrossCutting.Helper;
+using Rendimento.InternetBanking.Cliente.Core.Infra.CrossCutting.ValueObjects;
+using Rendimento.InternetBanking.Cliente.Core.Infra.DomainValidation;
+using Rendimento.InternetBanking.Cliente.OpenBanking.Domain.Feriados.Repositories.Interfaces;
+using Rendimento.InternetBankingCliente.RemoverCaracteres.Base;
+using Rendimento.InternetBankingCliente.ValidaCod;
+using RestSharp;
+using RND.IB.OpenBankingAPI.CommandResult;
+using RND.IB.OpenBankingAPI.Commands;
+using RND.IB.OpenBankingAPI.Helpers;
+using RND.IB.OpenBankingAPI.Model;
+using RND.IB.OpenBankingAPI.Model.Extrato;
+using Swashbuckle.Swagger.Annotations;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Web.Http;
+
+namespace RND.IB.OpenBankingAPI.Controllers
+{
+    /// <summary>
+    /// 
+    /// </summary>
+    public class ContasCorrentesTransacoesController : BaseApiController
+    {
+        private readonly string versionWebApi = ConfigurationManager.AppSettings["VersionWebApi"];
+        private readonly ILog _logger;
+        private readonly IFeriadosRespository _feriadosRespository;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="feriadosRespository"></param>
+        public ContasCorrentesTransacoesController(ILog logger, IFeriadosRespository feriadosRespository)
+        {
+            _logger = logger;
+            _feriadosRespository = feriadosRespository;
+        }
+
+
+        /// <summary>
+        ///  Transferencias - Incluir Transfêrencia
+        /// </summary>
+        /// <param name="tipoDoRetorno">httpStatusCode(200)(400)(404)(500)</param>
+        /// <param name="tipoSucesso">
+        /// 1 Result-->GUID 
+        /// 2 Result-->List-->TransacaoViewModel 
+        /// 3 Result-->TransacaoViewModel
+        /// 4 Result-->string
+        /// 5 Result-->TituloValidacaoRetorno
+        /// 6 Result-->ResumoViewModel
+        /// NULL=1
+        /// </param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("api/v1/ContasCorrentes/Transacoes/TesteDeRetorno")]
+        [AllowAnonymous]
+        public IHttpActionResult TesteDeRetorno(int tipoDoRetorno, int? tipoSucesso = null)
+        {
+            if (tipoDoRetorno == (int)HttpStatusCode.BadRequest)
+            {
+                Result result = new Result();
+                result.AddError("Codigo invalido 1", "Codigo de Barras 1");
+                result.AddError("Codigo invalido 2", "Codigo de Barras 2");
+                result.AddError("Codigo invalido 3", "Codigo de Barras 3");
+                result.AddError("Codigo invalido 4", "Codigo de Barras 4");
+
+                return Content(HttpStatusCode.BadRequest, result);
+            }
+            else if (tipoDoRetorno == (int)HttpStatusCode.OK)
+            {
+                if (tipoSucesso == 2)
+                {
+                    Result<List<TransacaoCommandResult>> retorno2 = new Result<List<TransacaoCommandResult>>
+                    {
+                        Value = new List<TransacaoCommandResult>()
+                    };
+                    for (int i = 0; i < 2; i++)
+                    {
+                        TransacaoCommandResult temp = new TransacaoCommandResult
+                        {
+                            TransacaoId = Guid.NewGuid()
+                        };
+                        ComprovanteTransacaoViewModel temp2 = new ComprovanteTransacaoViewModel { Favorecido = $"Usuario {i}", DataPagamento = DateTime.Now };
+
+                        temp.ComprovanteTransacao = temp2;
+
+                        retorno2.Value.Add(temp);
+                    }
+                    return Content(HttpStatusCode.OK, retorno2);
+                }
+                else if (tipoSucesso == 3)
+                {
+                    Result<TransacaoCommandResult> retorno3 = new Result<TransacaoCommandResult>();
+                    TransacaoCommandResult temp = new TransacaoCommandResult
+                    {
+                        TransacaoId = Guid.NewGuid()
+                    };
+                    ComprovanteTransacaoViewModel temp2 = new ComprovanteTransacaoViewModel { Favorecido = $"Usuario teste", DataPagamento = DateTime.Now };
+
+                    temp.ComprovanteTransacao = temp2;
+
+                    retorno3.Value = temp;
+
+
+                    return Content(HttpStatusCode.OK, retorno3);
+                }
+                else if (tipoSucesso == 4)
+                {
+                    Result<string> retorno4 = new Result<string>("transação cancelada com sucesso.");
+                    return Content(HttpStatusCode.OK, retorno4);
+                }
+                else if (tipoSucesso == 5)
+                {
+                    Result<TituloValidacaoCommandResult> retorno5 = new Result<TituloValidacaoCommandResult>();
+                    TituloValidacaoCommandResult temp = new TituloValidacaoCommandResult
+                    {
+                        CNPJCPFBeneficiario = "015.658.898-15",
+                        CNPJCPFPagador = "057.568.568-12",
+                        DataVencimento = DateTime.Now.AddDays(-30),
+                        DataLimitePagamento = DateTime.Now
+                    };
+
+                    retorno5.Value = temp;
+                    return Content(HttpStatusCode.OK, retorno5);
+                }
+                else if (tipoSucesso == 6)
+                {
+                    ResumoViewModel resumo = new ResumoViewModel
+                    {
+                        SaldoAnterior = 1000.00M,
+                        SaldoAtual = 990.00M,
+                        SaldoBloqueado = 0.0M,
+                        SaldoDisponivel = 990.00M,
+                        ValorBloqueado = 0.0M,
+                        Limite = 500.00M
+                    };
+
+                    List<Model.Extrato.ExtratoItemViewModel> itens = new List<Model.Extrato.ExtratoItemViewModel>();
+                    //Item 1
+                    HistoricoMovimentoViewModel histTemp = new HistoricoMovimentoViewModel
+                    {
+                        Categoria = "209",
+                        Codigo = "00702",
+                        Complemento = "de 0077-00001-0011667427-BIANCA SHYU",
+                        Descricao = "TED RECEBIDA"
+                    };
+                    ModalidadePagamentoViewModel modPag = new ModalidadePagamentoViewModel
+                    {
+                        ModalidadePagamentoId = 1,
+                        NomeModalidade = "Modalidade de pagamento"
+                    };
+
+                    TipoPagamentoViewModel tipoPag = new TipoPagamentoViewModel
+                    {
+                        ModalidadePagamento = modPag,
+                        DescricaoPagamento = "Pagamento x",
+                        FlagCodBarras = false,
+                        NomeSubTipoPag = "Sub tipo Pagamento",
+                        Sistema = 1,
+                        SubTipoPagamentoId = 12
+
+                    };
+
+                    Model.Extrato.ExtratoItemViewModel item = new Model.Extrato.ExtratoItemViewModel
+                    {
+                        Historico = histTemp,
+                        Natureza = "C",
+                        DataLancto = Convert.ToDateTime("2019-01-22"),
+                        NrDocumento = "6643155",
+                        Valor = 20M,
+                        SaldoAtual = 52.65M,
+                        SaldoAnterior = 32.65M,
+                        TipoOperacao = "TED",
+                        TipoPagamento = tipoPag,
+                        SubTipoPagamentoId = 10
+                    };
+                    itens.Add(item);
+                    //Item 1
+
+                    //Item 2
+                    histTemp = new HistoricoMovimentoViewModel
+                    {
+                        Categoria = "104",
+                        Codigo = "02000",
+                        Complemento = "Sem Parar",
+                        Descricao = "PAGTO FICHAS DE COMPENSACAO"
+                    };
+                    modPag = new ModalidadePagamentoViewModel
+                    {
+                        ModalidadePagamentoId = 2,
+                        NomeModalidade = "Modalidade de pagamento 2"
+                    };
+
+                    tipoPag = new TipoPagamentoViewModel
+                    {
+                        ModalidadePagamento = modPag,
+                        DescricaoPagamento = "Pagamento y",
+                        FlagCodBarras = true,
+                        NomeSubTipoPag = "Sub tipo Pagamento 2",
+                        Sistema = 2,
+                        SubTipoPagamentoId = 13
+                    };
+
+                    item = new Model.Extrato.ExtratoItemViewModel
+                    {
+                        Historico = histTemp,
+                        Natureza = "D",
+                        DataLancto = Convert.ToDateTime("2019-01-22"),
+                        NrDocumento = "",
+                        Valor = 46.29M,
+                        SaldoAtual = 6.36M,
+                        SaldoAnterior = 52.65M,
+                        TipoOperacao = "Outros",
+                        TipoPagamento = tipoPag,
+                        SubTipoPagamentoId = 10
+                    };
+                    itens.Add(item);
+
+                    //Item 2
+                    ValidationResult validation = new ValidationResult();
+                    ObterExtratoCommandResult extratoResult = new ObterExtratoCommandResult
+                    {
+                        Cliente = "<Nome do Cliente>",
+                        Resumo = resumo,
+                        Itens = itens
+                    };
+
+
+                    return Content(HttpStatusCode.OK, new Result<ObterExtratoCommandResult>(extratoResult));
+                }
+
+                return Content(HttpStatusCode.OK, new Result<Guid>(Guid.NewGuid()));
+            }
+            else if (tipoDoRetorno == (int)HttpStatusCode.NotFound)
+            {
+                return Content(HttpStatusCode.NotFound, "Nenhum resultado encontrado para os critérios informados");
+            }
+            else
+            {
+                string a = "a";
+                int b = Convert.ToInt32(a);
+                return Content(HttpStatusCode.NotFound, "Vai dar erro antes");
+            }
+
+        }
+
+        //Arq --> Transferencias - Incluir Transfêrencia
+        [HttpPost]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/IncluirTransferencia")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<Guid>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> IncluirTransferencia([FromBody]IncluirTransferenciaCommand command, string agencia, string conta)
+        {
+            return await PostarTransferencia(command, conta);
+        }
+
+        /// <summary>
+        ///  Pagamentos - Incluir Títulos
+        /// </summary>
+        /// <param name="command"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/IncluirTitulo")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<Guid>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> IncluirTitulo([FromBody]IncluirTituloCommand command, string agencia, string conta)
+        {
+            return await PostarTitulo(command, conta);
+        }
+
+        /// <summary>
+        ///  Pagamentos - Incluir Tributos
+        /// </summary>
+        /// <param name="command"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/IncluirTributo")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<Guid>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> IncluirTributo([FromBody]IncluirTributoCommand command, string agencia, string conta)
+        {
+            return await PostarTributo(command, conta, "Tributo");
+        }
+
+        /// <summary>
+        ///  Pagamentos - Incluir Conta Consumo
+        /// </summary>
+        /// <param name="command"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/IncluirContaConsumo")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<Guid>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> IncluirContaConsumo([FromBody]IncluirContaDeConsumoCommand command, string agencia, string conta)
+        {
+            return await PostarContaDeConsumo(command, conta, "ContaDeConsumo");
+        }
+
+        /// <summary>
+        ///  Consultar dados do boleto na CIP
+        /// </summary>
+        /// <param name="validarPagamentoCommand"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/ConsultarDadosDoBoleto")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<TituloValidacaoCommandResult>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> ConsultarDadosDoBoleto([FromBody]ValidarPagamentoCommand validarPagamentoCommand, string agencia, string conta)
+        {
+            Result<TransacaoCommandResult> result = new Result<TransacaoCommandResult>();
+            IHttpActionResult actionResult = default(IHttpActionResult);
+            Result<TituloValidacaoCommandResult> pagamentoRetorno = new Result<TituloValidacaoCommandResult>();
+            //long usuarioExternoId = 0;
+
+            if (ModelState.IsValid)
+            {
+                //if (Request.Headers.Contains("UsuarioExternoId") && Request.Headers.Contains("ChaveAcesso") && long.TryParse(Request.Headers.GetValues("UsuarioExternoId").First(), out usuarioExternoId))
+                //{
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+                    var dadosConta = new
+                    {
+                        ContaCorrenteId = default(long),
+                        ClienteId = default(long),
+                        ChaveAcessoRol = default(string),
+                        HabilitaMP = default(bool)
+                    };
+
+
+                    using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                    {
+                        string sqlquery = $"SELECT ContaCorrenteId, ClienteId, ChaveAcessoRol, HabilitaMP from dbo.ContaCorrente where CodConta = '{conta}'";
+                        dadosConta = (await connection.QueryAsync(() => new
+                        {
+                            ContaCorrenteId = default(long),
+                            ClienteId = default(long),
+                            ChaveAcessoRol = default(string),
+                            HabilitaMP = default(bool)
+                        }, sqlquery)).FirstOrDefault();
+                    }
+
+
+                    validarPagamentoCommand.CodigoBarras = CodigoDeBarrasOuLinhaDigitavel(validarPagamentoCommand);
+                    if (string.IsNullOrWhiteSpace(validarPagamentoCommand.CodigoBarras))
+                        return Content(HttpStatusCode.BadRequest, "Código de Barras ou Linha Digitável informados, inválidos");
+
+                    ValidaDadosPagamentoRequest pagamento = new ValidaDadosPagamentoRequest
+                    {
+                        ChaveCliente = dadosConta.ChaveAcessoRol,
+                        CodigoBarras = validarPagamentoCommand.CodigoBarras,
+                        LinhaDigitavel = validarPagamentoCommand.LinhaDigitavel,
+                        OrigemVan = false
+                    };
+
+                    string payLoad = JsonConvert.SerializeObject(pagamento);
+                    StringContent httpContent = new StringContent(payLoad, Encoding.UTF8, "application/json");
+                    HttpResponseMessage response = default(HttpResponseMessage);
+
+                    try
+                    {
+                        response = await client.GetAsync($"ContasCorrentes/ValidarPagamento/{validarPagamentoCommand.CodigoBarras}?ContaCorrenteDebitoId={dadosConta.ContaCorrenteId}").ConfigureAwait(false);
+
+                        var saida = new Result<TituloValidacaoCommandResult>();
+                        var data = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        if (response.StatusCode == HttpStatusCode.OK)
+                        {
+
+                            var pagamentoTituloViewModel = JsonConvert.DeserializeObject<Result<ValidarPagamentoTituloViewModel>>(data);
+                            saida.Value = new TituloValidacaoCommandResult(pagamentoTituloViewModel.Value);
+                            saida.Value.HabilitaMP = dadosConta.HabilitaMP;
+
+                            var codigoRetorno = 200;
+
+                            #region consulta de mensagem
+                            using (var db = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                            {
+                                var mensagens = await db.QueryAsync<MotivosDeParaViewModel>("SELECT * FROM [dbo].[ConsultaDeBoletos_MotivosDePara]");
+                                foreach (var item in mensagens)
+                                {
+                                    var r = new Regex(item.motivoDe, RegexOptions.IgnoreCase | RegexOptions.Compiled).Match("" + saida.Value.Motivo);
+                                    if (r.Success)
+                                    {
+                                        saida.Value.Motivo = item.motivoPara;
+                                        codigoRetorno = item.codigoRetorno;
+                                    }
+                                }
+                            }
+                            #endregion
+
+                            return Content((HttpStatusCode)codigoRetorno, saida);
+
+                        }
+                        else
+                        {
+                            var pagamentoTituloViewModel = JsonConvert.DeserializeObject<Result<dynamic>>(data);
+                            pagamentoTituloViewModel.Value = null;
+                            actionResult = Content(HttpStatusCode.BadRequest, pagamentoTituloViewModel);
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+
+                        try
+                        {
+                            pagamentoRetorno = JsonConvert.DeserializeObject<Result<TituloValidacaoCommandResult>>(await response.Content.ReadAsStringAsync());
+                        }
+                        catch (Exception)
+                        {
+
+                            result.AddError("Erro ao realizar a ação solicita", "Transacoes");
+
+                            actionResult = Content(response.StatusCode, result);
+
+                            _logger.Catch(ex);
+                        }
+
+                    }
+
+                }
+                //}
+                //else
+                //{
+                //    result.AddError("Usuário informado não encontrado.", "Conta de consumo");
+                //    actionResult = Content(HttpStatusCode.BadRequest, result);
+                //}
+            }
+            else
+            {
+                foreach (System.Web.Http.ModelBinding.ModelError item in ModelState.Values.SelectMany(modelState => modelState.Errors))
+                {
+                    result.AddError(item.ErrorMessage, GetType().FullName);
+                }
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return actionResult;
+        }
+
+        private string CodigoDeBarrasOuLinhaDigitavel(ValidarPagamentoCommand command)
+        {
+
+            if (string.IsNullOrWhiteSpace(command.CodigoBarras) == false)
+            {
+                command.CodigoBarras = command.CodigoBarras.SomenteNumeros().RemoveSpecial();
+                if (string.IsNullOrWhiteSpace(command.CodigoBarras) == false)
+                    return command.CodigoBarras;
+            }
+
+            if (string.IsNullOrWhiteSpace(command.LinhaDigitavel) == false)
+            {
+                command.LinhaDigitavel = command.LinhaDigitavel.SomenteNumeros().RemoveSpecial();
+                if (string.IsNullOrWhiteSpace(command.LinhaDigitavel) == false)
+                    return BoletoHelper.CodigoBarrarPorLinhaDigitavel(command.LinhaDigitavel);
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        ///  Pagamentos e transferencias  - Obter transações
+        /// </summary>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <param name="DataInicio"></param>
+        /// <param name="DataFim"></param>
+        /// <param name="pagina"></param>
+        /// <param name="limite"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/Obter")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<IList<TransacaoCommandResult>>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> Obter(string agencia, string conta, [FromUri]ObterTransacaoCommand command)
+        {
+            int indice = command.pagina ?? 1;
+            int tamanho = command.limite ?? int.MaxValue;
+            Result result = new Result();
+            IHttpActionResult contentResult = default(IHttpActionResult);
+            long contaCorrenteId = 0;
+            string errorMessage = string.Empty;
+
+            TimeSpan diasPesq = command.DataFim - command.DataInicio;
+            if (diasPesq.Days > 60)
+            {
+                result.AddError("A pesquisa deve ser menor que 60 dias.", "Transacoes");
+            }
+
+            using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+            {
+                string sqlquery = $"SELECT ContaCorrenteId from dbo.ContaCorrente where CodConta = '{conta}'  AND CodAgencia = '{agencia}' AND Status = 'Ativa'";
+                contaCorrenteId = (await SqlMapper.QueryAsync<long>(connection, sqlquery)).FirstOrDefault();
+            }
+            using (HttpClient client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+                try
+                {
+                    HttpResponseMessage response = await client.GetAsync($"ContasCorrentes/{contaCorrenteId}/Transacoes?DataInicial={command.DataInicio.ToString("MM-dd-yyyy")}&DataFinal={command.DataFim.ToString("MM-dd-yyyy")}&pagina=1&limite={int.MaxValue}").ConfigureAwait(false);
+                    Result<IList<Rendimento.InternetBanking.Cliente.Transacoes.Aplicacao.TransacaoAppService.ViewModel.TributoRequestViewModel>> retornoAPI = new Result<IList<Rendimento.InternetBanking.Cliente.Transacoes.Aplicacao.TransacaoAppService.ViewModel.TributoRequestViewModel>>();
+
+                    if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NotFound)
+                    {
+
+                        PagedList<TransacaoCommandResult> transacoesList = (PagedList<TransacaoCommandResult>)(await response.Content.ReadAsAsync(typeof(PagedList<TransacaoCommandResult>)));
+                        Result<IList<TransacaoCommandResult>> retorno = new Result<IList<TransacaoCommandResult>>();
+
+                        if (transacoesList.List.Any())
+                        {
+                            retorno.Value = transacoesList.List.ToList();
+                            contentResult = Content(HttpStatusCode.OK, retorno);
+                        }
+                        else
+                        {
+                            retorno.Value = new List<TransacaoCommandResult>();
+                            contentResult = Content(HttpStatusCode.OK, retorno);
+                        }
+                    }
+                    else
+                    {
+                        errorMessage = await response.Content.ReadAsStringAsync();
+                        _logger.Error(errorMessage, new Exception(errorMessage));
+
+                        result.AddError(errorMessage, "Transacoes");
+                        contentResult = Content(response.StatusCode, result);
+
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    contentResult = Content(HttpStatusCode.InternalServerError, ex.Message);
+                }
+            }
+
+            return contentResult;
+        }
+
+        /// <summary>
+        ///  Pagamentos e transferencias  - Obter transações
+        /// </summary>
+        /// <param name="transacaoId"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/ObterPorId")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<TransacaoCommandResult>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> ObterPorId(Guid transacaoId, string agencia, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult contentResult = default(IHttpActionResult);
+            long contaCorrenteId = 0;
+
+
+            using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+            {
+                string sqlquery = $"SELECT ContaCorrenteId from dbo.ContaCorrente where CodConta = '{conta}'";
+                contaCorrenteId = (await SqlMapper.QueryAsync<long>(connection, sqlquery)).FirstOrDefault();
+            }
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+                string errorMessage = string.Empty;
+
+                try
+                {
+                    HttpResponseMessage response = await client.GetAsync($"ContasCorrentes/{contaCorrenteId}/Transacoes/{transacaoId}").ConfigureAwait(false);
+
+
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        TransacaoCommandResult transacaoItem = (TransacaoCommandResult)(await response.Content.ReadAsAsync(typeof(TransacaoCommandResult)));
+
+
+                        if (transacaoItem != null)
+                        {
+                            contentResult = Content(HttpStatusCode.OK, new Result<TransacaoCommandResult>(transacaoItem));
+                        }
+                        else
+                        {
+                            contentResult = Content(HttpStatusCode.NotFound, "nenhum resultado encontrado com os dados informados");
+                        }
+                    }
+                    else
+                    {
+                        errorMessage = await response.Content.ReadAsStringAsync();
+                        _logger.Error(errorMessage, new Exception(errorMessage));
+
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            contentResult = Content(HttpStatusCode.NotFound, "nenhum resultado encontrado com os dados informados");
+                        }
+                        else
+                        {
+                            result.AddError(errorMessage, "Transacoes");
+                            contentResult = Content(response.StatusCode, result);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.AddError(ex.Message, "Transacoes");
+                    _logger.Error(ex.Message, new Exception(ex.Message));
+
+                    contentResult = Content(HttpStatusCode.BadRequest, result);
+                }
+            }
+
+
+            return contentResult;
+
+        }
+
+        /// <summary>
+        ///  Pagamentos e transferencias  - Obter transações
+        /// </summary>
+        /// <param name="transacaoId"></param>
+        /// <param name="agencia"></param>
+        /// <param name="conta"></param>
+        /// <returns></returns>
+        [HttpPut]
+        [Route("api/v1/ContasCorrentes/{agencia}/{conta}/Transacoes/Cancelar")]
+        [SwaggerResponse(HttpStatusCode.Accepted, Type = typeof(Result<TransacaoCommandResult>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> Cancelar(string transacaoId, string agencia, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult contentResult = default(IHttpActionResult);
+            long contaCorrenteId = 0;
+            long registroArquivoId = 0;
+
+            if (Guid.TryParse(transacaoId, out Guid transacaoGuid))
+            {
+                using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                {
+                    string sqlquery = $"SELECT ContaCorrenteId from dbo.ContaCorrente where CodConta = '{conta}'";
+                    contaCorrenteId = (await SqlMapper.QueryAsync<long>(connection, sqlquery)).FirstOrDefault();
+                }
+
+
+                using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                {
+                    string sqlquery = $@"select RegistroArquivoId from dbo.RegistroArquivoTransacaoParceiro
+                                where RegistroArquivoTransacaoParceiroId = '{transacaoId}'";
+                    registroArquivoId = (await SqlMapper.QueryAsync<long>(connection, sqlquery)).FirstOrDefault();
+                }
+
+
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+                    string errorMessage = string.Empty;
+
+                    try
+                    {
+                        HttpResponseMessage response = await client.DeleteAsync($"ContasCorrentes/{contaCorrenteId}/Transacoes/{registroArquivoId}").ConfigureAwait(false);
+
+
+                        if (response.StatusCode == HttpStatusCode.Accepted)
+                        {
+                            TransacaoCommandResult transacaoItem = (TransacaoCommandResult)(await response.Content.ReadAsAsync(typeof(TransacaoCommandResult)));
+
+
+                            if (transacaoItem != null)
+                            {
+                                contentResult = Content(HttpStatusCode.Accepted, transacaoId);
+                            }
+                            else
+                            {
+                                contentResult = Content(HttpStatusCode.NotFound, "nenhum resultado encontrado com os dados informados");
+                            }
+                        }
+                        else
+                        {
+                            errorMessage = await response.Content.ReadAsStringAsync();
+                            Exception exception = new Exception(errorMessage);
+                            _logger.Catch(exception);
+                            throw exception;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Merge(JsonConvert.DeserializeObject<Result>(ex.Message));
+                        _logger.Catch(ex);
+                        contentResult = Content(HttpStatusCode.BadRequest, result);
+                    }
+                }
+            }
+            else
+            {
+                result.AddError("dados inválidos.", "Transacoes");
+                contentResult = Content(HttpStatusCode.BadRequest, "nenhum resultado encontrado com os dados informados");
+            }
+
+            return contentResult;
+
+        }
+        private async Task<IHttpActionResult> TratarRetornoPagamento(IHttpActionResult actionResult, Result<PagamentoRetorno> pagamentoRetorno)
+        {
+
+            try
+            {
+                Guid chaveAcesso = Guid.Parse(Request.Headers.GetValues("ChaveAcesso").First());
+                Guid TransacaoId = Guid.NewGuid();
+
+                using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                {
+                    string sqlquery = $"SELECT UsuarioExternoContaCorrenteChaveDeAcessoId from UsuarioExternoContaCorrenteChaveDeAcesso where ChaveAcesso = '{Rendimento.InternetBanking.Infra.Core.RendimentoCrypto.GetEncrypt(chaveAcesso.ToString().ToUpper())}'";
+                    long usuarioExternoContaChaveID = (await connection.QueryAsync<long>(sqlquery).ConfigureAwait(false)).FirstOrDefault();
+
+                    sqlquery = $@"INSERT INTO RegistroArquivoTransacaoParceiro
+                                            (RegistroArquivoTransacaoParceiroId
+                                            ,RegistroArquivoId
+                                            ,UsuarioExternoContaCorrenteChaveDeAcessoId
+                                            )
+                                VALUES( '{TransacaoId}',{pagamentoRetorno.Value.RegistroArquivoId}, {usuarioExternoContaChaveID})";
+
+                    await connection.ExecuteAsync(sqlquery);
+                }
+
+                Result<Guid> result = new Result<Guid>(TransacaoId);
+                result.Merge(pagamentoRetorno);
+
+                actionResult = Content(HttpStatusCode.Created, result);
+            }
+            catch (Exception ex)
+            {
+
+                _logger.Catch(ex);
+            }
+
+
+            return actionResult;
+        }
+        
+
+        private async Task<IHttpActionResult> PostarTitulo(IncluirTituloCommand command, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult actionResult = default(IHttpActionResult);
+            Result<PagamentoRetorno> pagamentoRetorno = new Result<PagamentoRetorno>();
+            long usuarioExternoId = 0;
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            if (ModelState.IsValid)
+            {
+                if (Request.Headers.Contains("UsuarioExternoId") && Request.Headers.Contains("ChaveAcesso") && long.TryParse(Request.Headers.GetValues("UsuarioExternoId").First(), out usuarioExternoId))
+                {
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+                        var dadosConta = new
+                        {   ContaCorrenteId = default(long),
+                            ClienteId = default(long),
+                            cpf = default(string),
+                            codPraca = default(string)
+                        };
+
+                        using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                        {
+                            string sqlquery = $@"SELECT c.ContaCorrenteId, c.ClienteId, u.CPF, pr.CODPRACA from dbo.ContaCorrente c with(nolock)
+                                    INNER JOIN UsuarioExternoContaCorrente uc with(nolock) ON
+                                c.ContaCorrenteId = uc.ContaCorrenteId
+                                    INNER JOIN usuarioExternoConfiguracao b with(nolock)
+                                ON uc.UsuarioExternoConfiguracaoId = b.UsuarioExternoConfiguracaoId
+                                    INNER JOIN UsuarioExterno u with(nolock)
+                                ON b.UsuarioExternoId = u.UsuarioExternoId
+									INNER JOIN Agencias ag with(nolock)
+								ON c.CodAgencia = ag.CODAGENCIA
+									LEFT JOIN Pracas pr with(nolock) ON ag.PRACAID = pr.PracaId 
+                                WHERE c.CodConta ='{conta}'";
+                            dadosConta = (await connection.QueryAsync(() => new
+                            {
+                                ContaCorrenteId = default(long),
+                                ClienteId = default(long),
+                                cpf = default(string),
+                                codPraca = default(string)
+                            }, sqlquery).ConfigureAwait(false)).FirstOrDefault();
+                        }
+
+
+                        if (await _feriadosRespository.ObterLegadoFeriadosAsync(DateTime.Today, dadosConta.codPraca).ConfigureAwait(false) || DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday)
+                        {
+                            result.AddError("Data não permite processamento", GetType().FullName);
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                            return actionResult;
+                        }
+
+                        TituloRequestViewModel titulo = new TituloRequestViewModel
+                        {
+                            ClienteId = dadosConta.ClienteId,
+                            ContaCorrenteDebitoId = dadosConta.ContaCorrenteId,
+                            IdentificacaoOperacao = command.IdentificacaoDaOperacaoNoExtrato,
+                            UsuarioExternoId = usuarioExternoId,
+                            CodigoBarras = command.CodigoDeBarrasOuLinhaDigitavel,
+                            DataPagamento = DateTime.Now,
+                            ValorPagamento = command.ValorDoPagamento,
+                            ValorTitulo = command.ValorDoTitulo,
+                            TributoCodBarras = new PagamentoTributoCodBarrasViewModel() {
+                                CodBarras = command.CodigoDeBarrasOuLinhaDigitavel
+                            }
+                        };
+
+                        string payLoad = JsonConvert.SerializeObject(titulo);
+
+                        StringContent httpContent = new StringContent(payLoad, Encoding.UTF8, "application/json");
+
+                        HttpResponseMessage response = default(HttpResponseMessage);
+
+                        try
+                        {
+                            response = await client.PostAsync($"ContasCorrentes/{dadosConta.ContaCorrenteId}/Transacoes/Boleto", httpContent).ConfigureAwait(false);
+                            statusCode = response.StatusCode;
+
+                            pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                            try
+                            {
+                                pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                            }
+                            catch (Exception)
+                            {
+
+                                result.AddError("Erro ao realizar a ação solicita", "Transacoes");
+
+                                actionResult = Content(response.StatusCode, result);
+
+                                _logger.Catch(ex);
+                            }
+
+                        }
+
+                        if (pagamentoRetorno.IsSuccess && pagamentoRetorno.Value != null)
+                        {
+                            actionResult = await TratarRetornoPagamento(actionResult, pagamentoRetorno).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            if (pagamentoRetorno.ErroMessage.Errors.Count > 0)
+                            {
+                                foreach (ErrorDescription item in pagamentoRetorno.ErroMessage.Errors)
+                                {
+                                    result.AddError(item.Message, item.Domain);
+                                }
+                            }
+                            else
+                            {
+                                result.AddError("Falha na inclusão do titulo", "Transacoes");
+                            }
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError("Usuário informado não encontrado.", "Conta de consumo");
+                    actionResult = Content(HttpStatusCode.BadRequest, result);
+                }
+            }
+            else
+            {
+                foreach (System.Web.Http.ModelBinding.ModelError item in ModelState.Values.SelectMany(modelState => modelState.Errors))
+                {
+                    result.AddError(item.ErrorMessage, GetType().FullName);
+                }
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return actionResult;
+        }
+        private async Task<IHttpActionResult> PostarTributo(IncluirTributoCommand command, string conta, string resource)
+        {
+            Result result = new Result();
+            IHttpActionResult actionResult = default(IHttpActionResult);
+            ContaDeConsumoViewModel pagamentoContaConsumo = default(ContaDeConsumoViewModel);
+            Result<PagamentoRetorno> pagamentoRetorno = new Result<PagamentoRetorno>();
+            long usuarioExternoId = 0;
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+
+            RemoveSpecialCharacters removeSpecialCharacters = new RemoveSpecialCharacters(command.CodigoDeBarrasOuLinhaDigitavel);
+            command.CodigoDeBarrasOuLinhaDigitavel = removeSpecialCharacters.Remove();
+
+            if (ValidaCodBarras.Valida44Ou48Ou47Ou33CaracteresCodigoDeBarras(command.CodigoDeBarrasOuLinhaDigitavel) == false)
+            {
+                result.AddError("Quantidade de caracteres no código de barras incorreto.", "Conta de consumo");
+                return actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+                
+            if (ModelState.IsValid)
+            {
+                if (Request.Headers.Contains("UsuarioExternoId") && long.TryParse(Request.Headers.GetValues("UsuarioExternoId").First(), out usuarioExternoId))
+                {
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+                        var dadosConta = new
+                        {
+                            ContaCorrenteId = default(long), ClienteId = default(long), cpf = default(string), codPraca = default(string)
+                        };
+
+                        using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                        {
+                            string sqlquery = $@"SELECT c.ContaCorrenteId, c.ClienteId, u.CPF, pr.CODPRACA 
+                                from dbo.ContaCorrente c with(nolock)
+                                    INNER JOIN UsuarioExternoContaCorrente uc with(nolock) ON c.ContaCorrenteId = uc.ContaCorrenteId
+                                    INNER JOIN usuarioExternoConfiguracao b with(nolock) ON uc.UsuarioExternoConfiguracaoId = b.UsuarioExternoConfiguracaoId
+                                    INNER JOIN UsuarioExterno u with(nolock) ON b.UsuarioExternoId = u.UsuarioExternoId
+									INNER JOIN Agencias ag with(nolock) ON c.CodAgencia = ag.CODAGENCIA
+									LEFT JOIN Pracas pr with(nolock) ON ag.PRACAID = pr.PracaId 
+                                WHERE c.CodConta ='{conta}'";
+                            dadosConta = (await connection.QueryAsync(() => new
+                            {
+                                ContaCorrenteId = default(long),ClienteId = default(long),cpf = default(string),codPraca = default(string)
+                            }, sqlquery)).FirstOrDefault();
+                        }
+
+
+                        if (await _feriadosRespository.ObterLegadoFeriadosAsync(DateTime.Today, dadosConta.codPraca) || DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday)
+                        {
+                            result.AddError("Data não permite processamento", GetType().FullName);
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                            return actionResult;
+                        }
+
+                        CarregarDadosConta carregarDadosConta = new CarregarDadosConta();
+                        pagamentoContaConsumo = carregarDadosConta.CarregarDadosContaConsumo(command.CodigoDeBarrasOuLinhaDigitavel);
+
+
+                        TributoRequestViewModel tributo = new TributoRequestViewModel
+                        {
+                            ClienteId = dadosConta.ClienteId,
+                            CodBancoCompensacao = "0633",
+                            ContaCorrenteDebitoId = dadosConta.ContaCorrenteId,
+                            TipoLancamento = (EnumLancamentoCnabTributo)EnumFormaLancamentoCNAB.PagamentoContasTributosComCodigoDeBarras.GetHashCode(),
+                            IdentificacaoOperacao = command.IdentificacaoDaOperacaoNoExtrato,
+                            UsuarioExternoId = usuarioExternoId,
+                            CpfSacado = command.DARF.CpfSacado,
+                            TributoCodBarras = new PagamentoTributoCodBarrasViewModel
+                            {
+                                CodBarras = command.CodigoDeBarrasOuLinhaDigitavel,
+                                DataPagamento = DateTime.Now,
+                                ValorPagamento = (double)pagamentoContaConsumo.ValorPagamento,
+                                PeriodoApuracao = command.PeriodoApuracao,
+                                NomeCedente = command.DARF.Nome,
+                                DataVencimento = command.DataVencimento,
+                                Inscricao = command.FGTS.InscricaoTipo,
+                                Lacre = command.FGTS.CodRecolhimento,
+                                LacreDigito = command.FGTS.DigitoIdRecolhimento,
+                                Identificador = command.FGTS.IdRecolhimento
+                            }
+                        };
+
+                        string payLoad = JsonConvert.SerializeObject(tributo);
+
+                        StringContent httpContent = new StringContent(payLoad, Encoding.UTF8, "application/json");
+
+                        HttpResponseMessage response = default(HttpResponseMessage);
+
+                        try
+                        {
+                            response = await client.PostAsync($"ContasCorrentes/{dadosConta.ContaCorrenteId}/Transacoes/{resource}", httpContent).ConfigureAwait(false);
+                            statusCode = response.StatusCode;
+
+                            pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                            try
+                            {
+                                pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+                            }
+                            catch (Exception)
+                            {
+
+                                result.AddError("Erro ao realizar a ação solicita", "Transacoes");
+
+                                actionResult = Content(response.StatusCode, result);
+
+                                _logger.Catch(ex);
+                            }
+
+                        }
+
+                        if (pagamentoRetorno.IsSuccess && pagamentoRetorno.Value != null)
+                        {
+                            actionResult = await TratarRetornoPagamento(actionResult, pagamentoRetorno);
+                        }
+                        else
+                        {
+                            if (pagamentoRetorno.ErroMessage.Errors.Count > 0)
+                            {
+                                foreach (ErrorDescription item in pagamentoRetorno.ErroMessage.Errors)
+                                {
+                                    result.AddError(item.Message, item.Domain);
+                                }
+                            }
+                            else
+                            {
+                                result.AddError("Falha na inclusão do tributo", "Transacoes");
+                            }
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError("Usuário informado não encontrado.", "Conta de consumo");
+                    actionResult = Content(HttpStatusCode.BadRequest, result);
+                }
+            }
+            else
+            {
+                foreach (System.Web.Http.ModelBinding.ModelError item in ModelState.Values.SelectMany(modelState => modelState.Errors))
+                {
+                    result.AddError(item.ErrorMessage, GetType().FullName);
+                }
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return actionResult;
+        }
+        private async Task<IHttpActionResult> PostarContaDeConsumo(IncluirContaDeConsumoCommand command, string conta, string resource)
+        {
+            Result result = new Result();
+            IHttpActionResult actionResult = default(IHttpActionResult);
+            ContaDeConsumoViewModel pagamentoContaConsumo = default(ContaDeConsumoViewModel);
+            Result<PagamentoRetorno> pagamentoRetorno = new Result<PagamentoRetorno>();
+            long usuarioExternoId = 0;
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+
+
+            if (ModelState.IsValid)
+            {
+                if (Request.Headers.Contains("UsuarioExternoId") && long.TryParse(Request.Headers.GetValues("UsuarioExternoId").First(), out usuarioExternoId))
+                {
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+                        var dadosConta = new
+                        {
+                            ContaCorrenteId = default(long),ClienteId = default(long),
+                            cpf = default(string),codPraca = default(string)
+                        };
+
+
+                        using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                        {
+                            string sqlquery = $@"SELECT c.ContaCorrenteId, c.ClienteId, u.CPF, pr.CODPRACA from dbo.ContaCorrente c with(nolock)
+                                    INNER JOIN UsuarioExternoContaCorrente uc with(nolock) ON c.ContaCorrenteId = uc.ContaCorrenteId
+                                    INNER JOIN usuarioExternoConfiguracao b with(nolock) ON uc.UsuarioExternoConfiguracaoId = b.UsuarioExternoConfiguracaoId
+                                    INNER JOIN UsuarioExterno u with(nolock) ON b.UsuarioExternoId = u.UsuarioExternoId
+									INNER JOIN Agencias ag with(nolock) ON c.CodAgencia = ag.CODAGENCIA
+									LEFT JOIN Pracas pr with(nolock) ON ag.PRACAID = pr.PracaId 
+                                WHERE c.CodConta ='{conta}'";
+                            dadosConta = (await connection.QueryAsync(() => new
+                            {   ContaCorrenteId = default(long),
+                                ClienteId = default(long),
+                                cpf = default(string),
+                                codPraca = default(string)
+                            }, sqlquery)).FirstOrDefault();
+                        }
+
+
+                        if (await _feriadosRespository.ObterLegadoFeriadosAsync(DateTime.Today, dadosConta.codPraca) || DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday)
+                        {
+                            result.AddError("Data não permite processamento", GetType().FullName);
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                            return actionResult;
+                        }
+
+                        CarregarDadosConta carregarDadosConta = new CarregarDadosConta();
+                        pagamentoContaConsumo = carregarDadosConta.CarregarDadosContaConsumo(command.CodigoDeBarrasOuLinhaDigitavel);
+
+                        var NomeCedente = default(string);
+
+
+                        using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                        {
+                            string sqlquery = $"select Nome from ConveniosROL where CodigoConvenio ='{pagamentoContaConsumo.CodConvenio}'";
+                            NomeCedente = await connection.QueryFirstAsync<string>(sqlquery);
+                        }
+
+
+                        TributoRequestViewModel tributo = new TributoRequestViewModel
+                        {
+                            ClienteId = dadosConta.ClienteId,
+                            CodBancoCompensacao = "0633",
+                            ContaCorrenteDebitoId = dadosConta.ContaCorrenteId,
+                            TipoLancamento = (EnumLancamentoCnabTributo)EnumFormaLancamentoCNAB.PagamentoContasTributosComCodigoDeBarras.GetHashCode(),
+                            IdentificacaoOperacao = command.IdentificacaoDaOperacaoNoExtrato,
+                            UsuarioExternoId = usuarioExternoId,
+                            TributoCodBarras = new PagamentoTributoCodBarrasViewModel
+                            {
+                                CodBarras = pagamentoContaConsumo.CodigoBarras,
+                                DataPagamento = DateTime.Now,
+                                ValorPagamento = (double)pagamentoContaConsumo.ValorPagamento,
+                                DataVencimento = DateTime.Now,
+                                NomeCedente = NomeCedente
+                            }
+                        };
+
+                        string payLoad = JsonConvert.SerializeObject(tributo);
+
+                        StringContent httpContent = new StringContent(payLoad, Encoding.UTF8, "application/json");
+
+                        HttpResponseMessage response = default(HttpResponseMessage);
+
+                        try
+                        {
+                            response = await client.PostAsync($"ContasCorrentes/{dadosConta.ContaCorrenteId}/Transacoes/{resource}", httpContent).ConfigureAwait(false);
+                            statusCode = response.StatusCode;
+
+                            pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                            try
+                            {
+                                pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+                            }
+                            catch (Exception)
+                            {
+
+                                result.AddError("Erro ao realizar a ação solicita", "Transacoes");
+
+                                actionResult = Content(response.StatusCode, result);
+
+                                _logger.Catch(ex);
+                            }
+
+                        }
+
+                        if (pagamentoRetorno.IsSuccess && pagamentoRetorno.Value != null)
+                        {
+                            actionResult = await TratarRetornoPagamento(actionResult, pagamentoRetorno);
+                        }
+                        else
+                        {
+                            if (pagamentoRetorno.ErroMessage.Errors.Count > 0)
+                            {
+                                foreach (ErrorDescription item in pagamentoRetorno.ErroMessage.Errors)
+                                {
+                                    result.AddError(item.Message, item.Domain);
+                                }
+                            }
+                            else
+                            {
+                                result.AddError("Falha na inclusão do tributo", "Transacoes");
+                            }
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError("Usuário informado não encontrado.", "Conta de consumo");
+                    actionResult = Content(HttpStatusCode.BadRequest, result);
+                }
+            }
+            else
+            {
+                foreach (System.Web.Http.ModelBinding.ModelError item in ModelState.Values.SelectMany(modelState => modelState.Errors))
+                {
+                    result.AddError(item.ErrorMessage, GetType().FullName);
+                }
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return actionResult;
+        }
+        private async Task<IHttpActionResult> PostarTransferencia(IncluirTransferenciaCommand command, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult actionResult = default(IHttpActionResult);
+            TransferenciaRequestViewModel transferencia = default(TransferenciaRequestViewModel);
+            Result<PagamentoRetorno> pagamentoRetorno = new Result<PagamentoRetorno>();
+            long usuarioExternoId = default(long);
+            HttpStatusCode statusCode = HttpStatusCode.OK;
+            if (command.DataPagamento.Date > DateTime.Now.Date)
+            {
+                result.AddError("Agendamento não é permitido através da api.", GetType().FullName);
+
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+            else if (ModelState.IsValid)
+            {
+                if (Request.Headers.Contains("UsuarioExternoId") && Request.Headers.Contains("ChaveAcesso") && long.TryParse(Request.Headers.GetValues("UsuarioExternoId").First(), out usuarioExternoId))
+                {
+                    var dadosConta = new
+                    {   ContaCorrenteId = default(long),
+                        ClienteId = default(long),
+                        cpf = default(string),
+                        codPraca = default(string) };
+
+                    using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                    {
+                        string sqlquery = $@"SELECT c.ContaCorrenteId, c.ClienteId, u.CPF, pr.CODPRACA from dbo.ContaCorrente c with(nolock)
+                                    INNER JOIN UsuarioExternoContaCorrente uc with(nolock)
+                                ON c.ContaCorrenteId = uc.ContaCorrenteId
+                                    INNER JOIN usuarioExternoConfiguracao b with(nolock) ON uc.UsuarioExternoConfiguracaoId = b.UsuarioExternoConfiguracaoId
+                                    INNER JOIN UsuarioExterno u with(nolock)
+                                ON b.UsuarioExternoId = u.UsuarioExternoId
+									INNER JOIN Agencias ag with(nolock) ON c.CodAgencia = ag.CODAGENCIA
+									LEFT JOIN Pracas pr with(nolock)
+								ON ag.PRACAID = pr.PracaId 
+                                WHERE c.CodConta ='{conta}'";
+                        dadosConta = (await connection.QueryAsync(() => new
+                        {   ContaCorrenteId = default(long),
+                            ClienteId = default(long), cpf = default(string),
+                            codPraca = default(string)
+                        }, sqlquery)).FirstOrDefault();
+                    }
+
+
+                    if (await _feriadosRespository.ObterLegadoFeriadosAsync(DateTime.Today, dadosConta.codPraca) || DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday)
+                    {
+                        result.AddError("Data não permite processamento", GetType().FullName);
+                        actionResult = Content(HttpStatusCode.BadRequest, result);
+                        return actionResult;
+                    }
+
+
+                    transferencia = new TransferenciaRequestViewModel
+                    {
+                        CodContaFavorecido = command.ContaDoFavorecido,
+                        ContaCorrenteDebitoId = dadosConta.ContaCorrenteId,
+                        ClienteId = dadosConta.ClienteId,
+                        CodAgenciaFavorecido = command.AgenciaDoFavorecido,
+                        DvAgenciaFavorecido = command.DigitoDaAgenciaDoFavorecido,
+                        NomeFavorecido = command.NomeDoFavorecido,
+                        CodBancoFavorecido = command.BancoDoFavorecido,
+                        ValorPagamento = command.ValorDaTransferencia,
+                        DataPagamento = command.DataPagamento,
+                        IdentificacaoOperacao = command.IdentificacaoDaOperacaoNoExtrato,
+                        UsuarioExternoCpf = dadosConta.cpf,
+                        CodigoFinalidade = command.CodigoDaFinalidade,
+                        DvContaFavorecido = command.DigitoDaContaDoFavorecido,
+                        CpfCnpjFavorecido = command.CpfOuCnpjDoFavorecido,
+                        EPagamentoDeParceiro = true,
+                        UsuarioExternoId = usuarioExternoId,
+                        ValorRealEfetivacaoPagto = command.ValorDaTransferencia
+                    };
+
+                    using (HttpClient client = new HttpClient())
+                    {
+                        client.BaseAddress = new Uri(ConfigurationManager.AppSettings["IBCLIENTEAPI"]);
+                        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+
+                        string payLoad = JsonConvert.SerializeObject(transferencia);
+
+                        StringContent httpContent = new StringContent(payLoad, Encoding.UTF8, "application/json");
+
+                        HttpResponseMessage response = default(HttpResponseMessage);
+
+                        try
+                        {
+                            response = await client.PostAsync($"ContasCorrentes/{dadosConta.ContaCorrenteId}/Transacoes/Transferencia", httpContent).ConfigureAwait(false);
+
+                            statusCode = response.StatusCode;
+                            if (response.StatusCode != HttpStatusCode.OK)
+                            {
+                                string returnValue = (await response.Content.ReadAsStringAsync());
+                                Exception ex = new Exception(returnValue);
+                                _logger.Catch(ex);
+                                throw ex;
+                            }
+
+                            pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+
+                        }
+                        catch (Exception ex)
+                        {
+
+                            try
+                            {
+                                pagamentoRetorno = JsonConvert.DeserializeObject<Result<PagamentoRetorno>>(await response.Content.ReadAsStringAsync());
+                            }
+                            catch (Exception)
+                            {
+
+                                result.AddError("Erro ao realizar a ação solicita", "Transacoes");
+
+                                actionResult = Content(response.StatusCode, result);
+
+                                _logger.Catch(ex);
+                            }
+
+                        }
+
+                        if (pagamentoRetorno.IsSuccess && pagamentoRetorno.Value != null)
+                        {
+                            actionResult = await TratarRetornoPagamento(actionResult, pagamentoRetorno);
+                        }
+                        else
+                        {
+                            result.AddError("Falha na inclusão da transferência", "Transacoes");
+                            result.Merge(pagamentoRetorno);
+                            actionResult = Content(HttpStatusCode.BadRequest, result);
+                        }
+                    }
+                }
+                else
+                {
+                    result.AddError("Usuário informado não encontrado.", "Conta de consumo");
+                    actionResult = Content(HttpStatusCode.BadRequest, result);
+                }
+            }
+            else
+            {
+                foreach (System.Web.Http.ModelBinding.ModelError item in ModelState.Values.SelectMany(modelState => modelState.Errors))
+                {
+                    result.AddError(item.ErrorMessage, GetType().FullName);
+                }
+                actionResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return actionResult;
+        }
+
+
+        [HttpGet]
+        [Route("api/v1/ContasCorrentes/{Agencia}/{Conta}/Saldo/Obter")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<ObterSaldoCommandResult>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> ObterSaldo(string agencia, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult contentResult = default(IHttpActionResult);
+
+            try
+            {
+                using (RestClientDispose client = new RestClientDispose(ConfigurationManager.AppSettings["IBCLIENTEAPI"]))
+                {
+                    RestRequest request = new RestRequest($"ContasCorrentes/ObterSaldoConta?codColigada=001&codAgencia={agencia}&codConta={conta}", Method.GET);
+
+                    IRestResponse response = client.Execute(request);
+
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        string texto = response.ErrorMessage;
+                        result.AddError("Falha na comunicação durante a consulta ao saldo.", "Saldo");
+                        contentResult = Content(HttpStatusCode.BadRequest, result);
+                    }
+                    else
+                    {
+                        Rendimento.InternetBanking.Cliente.Application.ViewModels.ContaCorrenteSaldoViewModel saldo = JsonConvert.DeserializeObject<Rendimento.InternetBanking.Cliente.Application.ViewModels.ContaCorrenteSaldoViewModel>(response.Content);
+
+                        if (saldo != null)
+                        {
+                            if (saldo.ValidationResult == null)
+                            {
+                                string nomeCliente = string.Empty;
+                                using (IDbConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["PortalCliente"].ConnectionString))
+                                {
+                                    string sqlquery = $"SELECT CodClienteAB from dbo.ContaCorrente where CodConta = '{conta}'";
+                                    string codClienteAB = (await SqlMapper.QueryAsync<string>(connection, sqlquery)).FirstOrDefault();
+
+                                    sqlquery = $"SELECT NOME FROM dbo.Cliente WHERE CodClienteAB= '{codClienteAB}'";
+                                    nomeCliente = (await SqlMapper.QueryAsync<string>(connection, sqlquery)).FirstOrDefault();
+                                }
+
+                                ObterSaldoCommandResult saldoResult = new ObterSaldoCommandResult
+                                {
+                                    nome = nomeCliente,
+                                    limite = saldo.Limite,
+                                    saldoBloqueado = saldo.SaldoBloqueado,
+                                    saldoDisponivel = saldo.SaldoDisponivel,
+                                    saldoTotal = saldo.SaldoTotal,
+                                    valorBloqueado = saldo.ValorBloqueado
+                                };
+
+                                contentResult = Content(HttpStatusCode.OK, new Result<ObterSaldoCommandResult>(saldoResult));
+                            }
+                            else
+                            {
+                                foreach (ValidationError item in saldo.ValidationResult.Erros)
+                                {
+                                    result.AddError(item.Message, "Saldo");
+                                }
+                                contentResult = Content(HttpStatusCode.BadRequest, result);
+                            }
+                        }
+                        else
+                        {
+                            contentResult = Content(HttpStatusCode.NotFound, "nenhum resultado encontrado com os dados informados");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.AddError(ex.Message, "Saldo");
+                _logger.Error(ex.Message);
+
+                contentResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return contentResult;
+        }
+
+        [HttpGet]
+        [Route("api/v1/ContasCorrentes/{Agencia}/{Conta}/Extrato/Obter")]
+        [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Result<ObterExtratoCommandResult>))]
+        [SwaggerResponse(HttpStatusCode.BadRequest, Type = typeof(Result))]
+        [SwaggerResponse(HttpStatusCode.NotFound, Description = "Nenhum resultado encontrado para os critérios informados")]
+        public async Task<IHttpActionResult> ObterExtrato([FromUri]ObterExtratoCommand command, string agencia, string conta)
+        {
+            Result result = new Result();
+            IHttpActionResult contentResult = default(IHttpActionResult);
+
+            try
+            {
+                using (RestClientDispose client = new RestClientDispose(ConfigurationManager.AppSettings["IBCLIENTEAPI"]))
+                {
+
+                    string url = $"/ContasCorrentes/ObterExtratoConta?codColigada=001&codAgencia={agencia}&codConta={conta}&dataInicial={command.DataInicio.ToString("yyyy-MM-dd")}&dataFinal={command.DataFinal.ToString("yyyy-MM-dd")}";
+
+                    RestRequest request = new RestRequest(url, Method.GET);
+
+                    IRestResponse response = client.Execute(request);
+                    ExtratoViewModel extrato = JsonConvert.DeserializeObject<ExtratoViewModel>(response.Content);
+
+                    if (extrato != null)
+                    {
+                        if (extrato.ValidationResult.IsValid)
+                        {
+                            List<Model.Extrato.ExtratoItemViewModel> listItens = new List<Model.Extrato.ExtratoItemViewModel>();
+
+                            foreach (Rendimento.InternetBanking.Cliente.Application.ViewModels.SaldoExtrato.ExtratoItemViewModel item in extrato.Itens)
+                            {
+                                Model.Extrato.ExtratoItemViewModel itemTemp = (Model.Extrato.ExtratoItemViewModel)item;
+
+                                listItens.Add(itemTemp);
+                            }
+
+
+                            ObterExtratoCommandResult extratoResult = new ObterExtratoCommandResult
+                            {
+                                Cliente = extrato.Cliente,
+                                Resumo = (ResumoViewModel)extrato.Resumo,
+                                Itens = listItens
+
+                            };
+
+                            contentResult = Content(HttpStatusCode.OK, new Result<ObterExtratoCommandResult>(extratoResult));
+                        }
+                        else
+                        {
+                            foreach (ValidationError item in extrato.ValidationResult.Erros)
+                            {
+                                result.AddError(item.Message, "Extrato");
+                            }
+                            contentResult = Content(HttpStatusCode.BadRequest, result);
+                        }
+                    }
+                    else
+                    {
+                        contentResult = Content(HttpStatusCode.NotFound, "nenhum resultado encontrado com os dados informados");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.AddError(ex.Message, "Saldo");
+                _logger.Error(ex.Message);
+
+                contentResult = Content(HttpStatusCode.BadRequest, result);
+            }
+
+            return contentResult;
+        }
+    }
+}
